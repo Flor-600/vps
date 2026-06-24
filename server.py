@@ -229,24 +229,44 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 title = api_response.get('title', 'video')
 
                 if not download_link and progress_url:
-                    # Poll up to 60 times (max ~120 seconds)
-                    for attempt in range(60):
+                    print(f"[YT] Progress URL alındı: {progress_url}")
+                    for attempt in range(90):  # max ~180 seconds
                         time.sleep(2)
-                        preq = urllib.request.Request(progress_url)
-                        with urllib.request.urlopen(preq, timeout=15) as presp:
-                            progress_data = json.loads(presp.read().decode('utf-8'))
+                        try:
+                            preq = urllib.request.Request(progress_url)
+                            with urllib.request.urlopen(preq, timeout=15) as presp:
+                                raw = presp.read().decode('utf-8')
+                                progress_data = json.loads(raw)
 
-                        download_link = progress_data.get('url')
-                        title = progress_data.get('title', title)
+                            # Log every 5 attempts so user can see progress
+                            if attempt % 5 == 0:
+                                print(f"[YT] Attempt {attempt+1}: {raw[:300]}")
 
-                        if download_link:
-                            break  # URL is ready!
+                            # Try every possible field name for the download URL
+                            download_link = (
+                                progress_data.get('url') or
+                                progress_data.get('download_url') or
+                                progress_data.get('link') or
+                                progress_data.get('file_url') or
+                                progress_data.get('output_url') or
+                                progress_data.get('result_url') or
+                                progress_data.get('direct_url')
+                            )
+                            title = progress_data.get('title', title)
 
-                        status_text = progress_data.get('text', '')
-                        print(f"[YT] Polling ({attempt+1}/60): {status_text}")
+                            if download_link:
+                                print(f"[YT] Download URL bulundu!")
+                                break
+
+                            status_text = progress_data.get('text') or progress_data.get('status') or 'bekleniyor...'
+                            print(f"[YT] ({attempt+1}/90): {status_text}")
+
+                        except Exception as poll_err:
+                            print(f"[YT] Poll hatası ({attempt+1}): {poll_err}")
+                            continue
 
                 if not download_link:
-                    raise Exception('Zaman aşımı: Video 120 saniyede hazır olmadı. Tekrar deneyin.')
+                    raise Exception('Zaman aşımı: Video hazır olmadı. API response: Son progress yanıtı için server loglarını kontrol edin.')
 
                 # Step 3: Download the file to uploads folder
                 upload_dir = os.path.join(os.getcwd(), 'uploads')
