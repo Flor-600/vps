@@ -244,14 +244,25 @@ async function refreshFileList() {
                 </div>
             `;
             
+            const actions = document.createElement('div');
+            actions.className = 'file-actions';
+            
             const downloadBtn = document.createElement('a');
             downloadBtn.className = 'file-download';
             downloadBtn.href = file.url;
             downloadBtn.download = file.name;
             downloadBtn.innerHTML = '<i data-lucide="download"></i>';
             
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'file-delete';
+            deleteBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+            deleteBtn.title = 'Sil';
+            deleteBtn.onclick = () => deleteFile(file.name);
+            
+            actions.appendChild(downloadBtn);
+            actions.appendChild(deleteBtn);
             item.appendChild(fileInfo);
-            item.appendChild(downloadBtn);
+            item.appendChild(actions);
             fileListElement.appendChild(item);
         });
         
@@ -264,3 +275,79 @@ async function refreshFileList() {
 
 // Initial fetch of files
 refreshFileList();
+
+// --- DELETE FILE ---
+async function deleteFile(fileName) {
+    if (!confirm(`'${fileName}' dosyasını silmek istediğinizden emin misiniz?`)) return;
+    
+    try {
+        const response = await fetch('/api/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: fileName })
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            addTerminalLine(`[SİLİNDİ] ${data.output}`, true);
+            refreshFileList();
+        } else {
+            addTerminalLine(`[HATA] ${data.output}`, false);
+        }
+    } catch(err) {
+        addTerminalLine(`[HATA] Silme başarısız.`, false);
+    }
+}
+
+// --- YOUTUBE DOWNLOADER ---
+let selectedFormat = '360';
+
+document.querySelectorAll('.fmt-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        selectedFormat = this.dataset.fmt;
+    });
+});
+
+async function downloadYoutube() {
+    const url = document.getElementById('ytUrl').value.trim();
+    const apiKey = document.getElementById('ytApiKey').value.trim();
+    const btn = document.getElementById('ytDownloadBtn');
+    const progress = document.getElementById('ytProgress');
+    
+    if (!url) {
+        addTerminalLine('[HATA] Lütfen bir YouTube URL\'si girin!', false);
+        return;
+    }
+    if (!apiKey) {
+        addTerminalLine('[HATA] Lütfen API Key\'inizi girin!', false);
+        return;
+    }
+    
+    btn.disabled = true;
+    progress.style.display = 'block';
+    addTerminalLine(`[YT] İndirme başlatılıyor... Format: ${selectedFormat}`);
+    
+    try {
+        const response = await fetch('/api/youtube', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, format: selectedFormat, apikey: apiKey })
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            addTerminalLine(`[OK] ${data.output}`, true);
+            document.getElementById('ytUrl').value = '';
+            refreshFileList();
+        } else {
+            addTerminalLine(`[HATA] ${data.output}`, false);
+        }
+    } catch(err) {
+        addTerminalLine('[HATA] Sunucu bağlantısı koptu.', false);
+    } finally {
+        btn.disabled = false;
+        progress.style.display = 'none';
+    }
+}

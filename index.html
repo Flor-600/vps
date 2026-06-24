@@ -101,6 +101,42 @@
                     </div>
                 </section>
 
+                <!-- YouTube Downloader Panel -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title"><i data-lucide="youtube"></i> YouTube İndirici</h2>
+                    </div>
+                    <div class="yt-form">
+                        <div class="yt-input-group">
+                            <label>YouTube URL</label>
+                            <input type="text" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+                        </div>
+                        <div class="yt-input-group">
+                            <label>API Key (savenow.to)</label>
+                            <input type="password" id="ytApiKey" placeholder="API Key'inizi girin..." autocomplete="off">
+                        </div>
+                        <div class="yt-input-group">
+                            <label>Format Seç</label>
+                            <div class="format-grid">
+                                <button class="fmt-btn active" data-fmt="360">360p</button>
+                                <button class="fmt-btn" data-fmt="480">480p</button>
+                                <button class="fmt-btn" data-fmt="720">720p HD</button>
+                                <button class="fmt-btn" data-fmt="1080">1080p FHD</button>
+                                <button class="fmt-btn" data-fmt="1440">1440p QHD</button>
+                                <button class="fmt-btn" data-fmt="2160">4K</button>
+                                <button class="fmt-btn mp3" data-fmt="mp3">MP3 🎵</button>
+                            </div>
+                        </div>
+                        <button class="yt-download-btn" id="ytDownloadBtn" onclick="downloadYoutube()">
+                            <i data-lucide="download"></i>
+                            <span>Telefona İndir</span>
+                        </button>
+                        <div class="yt-progress" id="ytProgress">
+                            <div class="yt-bar" id="ytBar"></div>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="panel">
                     <div class="panel-header">
                         <h2 class="panel-title"><i data-lucide="zap"></i> Kontrol Merkezi</h2>

@@ -486,6 +486,164 @@ button svg {
     width: 16px; height: 16px;
 }
 
+.file-delete {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 0.25rem;
+    padding: 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    margin-left: 0.4rem;
+}
+
+.file-delete:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.file-delete svg {
+    width: 16px; height: 16px;
+}
+
+.file-actions {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+/* YouTube Downloader */
+.yt-form {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.yt-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.yt-input-group label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.yt-input-group input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    padding: 0.6rem 0.75rem;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+    width: 100%;
+}
+
+.yt-input-group input:focus {
+    border-color: var(--accent);
+}
+
+.format-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+}
+
+.fmt-btn {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-color) !important;
+    border-radius: 0.375rem !important;
+    padding: 0.5rem 0.25rem !important;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: center;
+    display: block;
+}
+
+.fmt-btn:hover {
+    border-color: var(--accent) !important;
+    color: var(--accent);
+    background: rgba(59,130,246,0.05);
+}
+
+.fmt-btn.active {
+    background: rgba(59,130,246,0.12) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
+.fmt-btn.mp3.active {
+    background: rgba(16,185,129,0.12) !important;
+    border-color: var(--success) !important;
+    color: var(--success) !important;
+}
+
+.yt-download-btn {
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.3) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.8rem !important;
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.yt-download-btn:hover {
+    background: rgba(59,130,246,0.2) !important;
+}
+
+.yt-download-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.yt-download-btn svg {
+    width: 18px; height: 18px;
+}
+
+.yt-progress {
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+}
+
+.yt-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--success));
+    border-radius: 2px;
+    animation: yt-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes yt-loading {
+    0% { width: 0%; margin-left: 0; }
+    50% { width: 70%; margin-left: 15%; }
+    100% { width: 0%; margin-left: 100%; }
+}
+
 /* Terminal Panel */
 .terminal-panel {
     display: flex;

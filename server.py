@@ -3,6 +3,8 @@ import socketserver
 import subprocess
 import json
 import os
+import urllib.request
+import urllib.parse
 
 PORT = 8080
 
@@ -162,6 +164,93 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 response = {'status': 'error', 'output': str(e)}
                 self.wfile.write(json.dumps(response).encode('utf-8'))
+        elif self.path == '/api/delete':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                file_name = data.get('name', '')
+                
+                if not file_name or '..' in file_name or '/' in file_name or '\\' in file_name:
+                    raise Exception('Geçersiz dosya adı!')
+                
+                upload_dir = os.path.join(os.getcwd(), 'uploads')
+                file_path = os.path.join(upload_dir, file_name)
+                
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    response = {'status': 'success', 'output': f"'{file_name}' silindi."}
+                else:
+                    raise Exception('Dosya bulunamadı!')
+                    
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'error', 'output': str(e)}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+
+        elif self.path == '/api/youtube':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                yt_url = data.get('url', '')
+                fmt = data.get('format', '720')
+                api_key = data.get('apikey', '')
+
+                if not yt_url or not api_key:
+                    raise Exception('URL veya API Key eksik!')
+
+                # Build savenow.to API URL
+                encoded_url = urllib.parse.quote(yt_url, safe='')
+                api_url = (f"https://p.savenow.to/ajax/download.php"
+                           f"?url={encoded_url}&format={fmt}&apikey={api_key}"
+                           f"&add_info=1&allow_extended_duration=0&no_merge=0")
+
+                req = urllib.request.Request(api_url)
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    api_response = json.loads(resp.read().decode('utf-8'))
+
+                # The API returns a download link
+                download_link = api_response.get('url') or api_response.get('link') or api_response.get('download_url')
+                
+                if download_link:
+                    # Download the file to uploads folder
+                    upload_dir = os.path.join(os.getcwd(), 'uploads')
+                    if not os.path.exists(upload_dir):
+                        os.makedirs(upload_dir)
+
+                    # Get a clean filename
+                    title = api_response.get('title', 'video').replace('/', '_').replace('\\', '_')
+                    ext = 'mp3' if fmt == 'mp3' else 'mp4'
+                    safe_title = "".join(c for c in title if c.isalnum() or c in ' ._-')[:80]
+                    file_name = f"{safe_title}.{ext}"
+                    out_path = os.path.join(upload_dir, file_name)
+
+                    urllib.request.urlretrieve(download_link, out_path)
+
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    response = {'status': 'success', 'output': f"'{file_name}' başarıyla indirildi ve uploads klasörüne kaydedildi!", 'title': title}
+                else:
+                    raise Exception(f"API yanıtı geçersiz: {json.dumps(api_response)[:200]}")
+
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'error', 'output': str(e)}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+
         else:
             self.send_response(404)
             self.end_headers()
