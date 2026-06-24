@@ -14,6 +14,39 @@ function updateTime() {
 setInterval(updateTime, 1000);
 updateTime();
 
+// Real Metrics Polling
+async function fetchMetrics() {
+    try {
+        const response = await fetch('/api/metrics');
+        const data = await response.json();
+        
+        // Update CPU
+        document.getElementById('cpuValue').textContent = data.cpu_usage;
+        const cpuBar = document.getElementById('cpuBar');
+        cpuBar.style.width = data.cpu_usage + '%';
+        if (data.cpu_usage > 80) cpuBar.className = 'progress warning';
+        else cpuBar.className = 'progress';
+        
+        // Update RAM
+        document.getElementById('ramValue').textContent = data.ram_used;
+        const ramBar = document.getElementById('ramBar');
+        const ramPercent = data.ram_total > 0 ? (data.ram_used / data.ram_total) * 100 : 0;
+        ramBar.style.width = ramPercent + '%';
+        if (ramPercent > 80) ramBar.className = 'progress warning';
+        else ramBar.className = 'progress';
+        
+        // Update Uptime
+        document.getElementById('uptimeValue').textContent = data.uptime;
+        
+    } catch (err) {
+        console.error("Metrics fetch error:", err);
+    }
+}
+
+setInterval(fetchMetrics, 2000);
+fetchMetrics();
+
+
 // Terminal Actions
 const terminalOutput = document.getElementById('terminalOutput');
 const terminalInput = document.getElementById('terminalInput');

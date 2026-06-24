@@ -49,13 +49,13 @@
                     <div class="metrics-grid">
                         <div class="metric-card">
                             <span class="metric-label">CPU Kullanımı</span>
-                            <div class="metric-value">12<span class="metric-unit">%</span></div>
-                            <div class="progress-bar"><div class="progress" style="width: 12%;"></div></div>
+                            <div class="metric-value"><span id="cpuValue">0</span><span class="metric-unit">%</span></div>
+                            <div class="progress-bar"><div id="cpuBar" class="progress" style="width: 0%;"></div></div>
                         </div>
                         <div class="metric-card">
                             <span class="metric-label">RAM Kullanımı</span>
-                            <div class="metric-value">1.2<span class="metric-unit">GB</span></div>
-                            <div class="progress-bar"><div class="progress warning" style="width: 45%;"></div></div>
+                            <div class="metric-value"><span id="ramValue">0</span><span class="metric-unit">GB</span></div>
+                            <div class="progress-bar"><div id="ramBar" class="progress warning" style="width: 0%;"></div></div>
                         </div>
                     </div>
                     
@@ -70,7 +70,7 @@
                         </div>
                         <div class="info-item">
                             <span class="info-label">Uptime</span>
-                            <span class="info-value mono text-accent">24h 12m</span>
+                            <span id="uptimeValue" class="info-value mono text-accent">0h 0m</span>
                         </div>
                     </div>
                 </section>
