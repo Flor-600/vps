@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termux VPS Console</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Google Fonts: Inter (UI) and JetBrains Mono (Terminal) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons (More premium and modern than FontAwesome) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23ededed%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 class=%22lucide lucide-terminal-square%22><path d=%22m7 11 2-2-2-2%22/><path d=%22M11 13h4%22/><rect width=%2218%22 height=%2218%22 x=%223%22 y=%223%22 rx=%222%22 ry=%222%22/></svg>">
+</head>
+<body>
+    <div class="background-grid"></div>
+    <div class="top-glow"></div>
+
+    <div class="container">
+        <header class="navbar">
+            <div class="logo">
+                <i data-lucide="terminal-square" class="brand-icon"></i>
+                <div class="brand-text">
+                    <h1>Termux</h1>
+                    <span class="badge">VPS</span>
+                </div>
+            </div>
+            <div class="nav-actions">
+                <div class="status-indicator">
+                    <span class="pulse"></span>
+                    Online
+                </div>
+                <div class="time-widget" id="timeWidget">--:--:--</div>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <!-- Left Column: Stats & Info -->
+            <div class="left-col">
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title"><i data-lucide="activity"></i> Sistem Monitörü</h2>
+                    </div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <span class="metric-label">CPU Kullanımı</span>
+                            <div class="metric-value">12<span class="metric-unit">%</span></div>
+                            <div class="progress-bar"><div class="progress" style="width: 12%;"></div></div>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">RAM Kullanımı</span>
+                            <div class="metric-value">1.2<span class="metric-unit">GB</span></div>
+                            <div class="progress-bar"><div class="progress warning" style="width: 45%;"></div></div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-label">İşletim Sistemi</span>
+                            <span class="info-value mono">Android / Termux</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Host</span>
+                            <span class="info-value mono">localhost:8080</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Uptime</span>
+                            <span class="info-value mono text-accent">24h 12m</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title"><i data-lucide="zap"></i> Kontrol Merkezi</h2>
+                    </div>
+                    <div class="action-grid">
+                        <button class="btn-primary" onclick="triggerAction('start_bot')">
+                            <i data-lucide="bot"></i>
+                            <div class="btn-text">
+                                <strong>Botu Başlat</strong>
+                                <span>Ana servisi çalıştırır</span>
+                            </div>
+                        </button>
+                        <button class="btn-secondary" onclick="triggerAction('restart_server')">
+                            <i data-lucide="refresh-cw"></i>
+                            <div class="btn-text">
+                                <strong>Yeniden Başlat</strong>
+                                <span>Tüm servisleri resetler</span>
+                            </div>
+                        </button>
+                        <button class="btn-secondary" onclick="triggerAction('clear_logs')">
+                            <i data-lucide="trash-2"></i>
+                            <div class="btn-text">
+                                <strong>Logları Temizle</strong>
+                                <span>Gereksiz dosyaları siler</span>
+                            </div>
+                        </button>
+                        <button class="btn-secondary" onclick="triggerAction('update_pkg')">
+                            <i data-lucide="download-cloud"></i>
+                            <div class="btn-text">
+                                <strong>Güncelle</strong>
+                                <span>pkg update && upgrade</span>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Terminal -->
+            <div class="right-col">
+                <section class="panel terminal-panel">
+                    <div class="terminal-header">
+                        <div class="window-controls">
+                            <span class="control close"></span>
+                            <span class="control minimize"></span>
+                            <span class="control maximize"></span>
+                        </div>
+                        <div class="terminal-title">bash - root@termux</div>
+                    </div>
+                    <div class="terminal-body" id="terminalOutput">
+                        <div class="term-line welcome-msg">
+                            Termux VPS Management Console v1.0.0 <br>
+                            Type 'help' to see available commands.
+                        </div>
+                    </div>
+                    <div class="terminal-input-row">
+                        <span class="prompt">root@termux:~#</span>
+                        <input type="text" id="terminalInput" placeholder="Komut girin (örn: ls -la)" autocomplete="off">
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
