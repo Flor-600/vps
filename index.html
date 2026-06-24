@@ -39,139 +39,236 @@
             </div>
         </header>
 
+        <!-- Modern Tabs Navigation -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('tab-general')"><i data-lucide="layout-dashboard"></i> Genel Arayüz</button>
+            <button class="tab-btn" onclick="switchTab('tab-pip')"><i data-lucide="package"></i> Pip Yöneticisi</button>
+            <button class="tab-btn" onclick="switchTab('tab-macros')"><i data-lucide="bot"></i> Makrolar & Bildirimler</button>
+            <button class="tab-btn" onclick="switchTab('tab-backups')"><i data-lucide="shield-alert"></i> Yedekleme & Araçlar</button>
+        </div>
+
         <main class="dashboard-grid">
             <!-- Left Column: Stats & Info -->
             <div class="left-col">
-                <section class="panel">
-                    <div class="panel-header">
-                        <h2 class="panel-title"><i data-lucide="activity"></i> Sistem Monitörü</h2>
-                    </div>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <span class="metric-label">CPU Kullanımı</span>
-                            <div class="metric-value"><span id="cpuValue">0</span><span class="metric-unit">%</span></div>
-                            <div class="progress-bar"><div id="cpuBar" class="progress" style="width: 0%;"></div></div>
+                <!-- Tab 1: Genel Arayüz -->
+                <div id="tab-general" class="tab-content active">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="activity"></i> Sistem Monitörü</h2>
                         </div>
-                        <div class="metric-card">
-                            <span class="metric-label">RAM Kullanımı</span>
-                            <div class="metric-value"><span id="ramValue">0</span><span class="metric-unit">GB</span></div>
-                            <div class="progress-bar"><div id="ramBar" class="progress warning" style="width: 0%;"></div></div>
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <span class="metric-label">CPU Kullanımı</span>
+                                <div class="metric-value"><span id="cpuValue">0</span><span class="metric-unit">%</span></div>
+                                <div class="progress-bar"><div id="cpuBar" class="progress" style="width: 0%;"></div></div>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">RAM Kullanımı</span>
+                                <div class="metric-value"><span id="ramValue">0</span><span class="metric-unit">GB</span></div>
+                                <div class="progress-bar"><div id="ramBar" class="progress warning" style="width: 0%;"></div></div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="info-list">
-                        <div class="info-item">
-                            <span class="info-label">İşletim Sistemi</span>
-                            <span class="info-value mono">Android / Termux</span>
+                        
+                        <div class="info-list">
+                            <div class="info-item">
+                                <span class="info-label"><i data-lucide="battery" class="inline-icon"></i> Pil Durumu</span>
+                                <span id="batteryValue" class="info-value mono">100% (Discharging)</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label"><i data-lucide="thermometer" class="inline-icon"></i> Sıcaklık</span>
+                                <span id="tempValue" class="info-value mono text-warning">35.0 °C</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label"><i data-lucide="hard-drive" class="inline-icon"></i> Depolama</span>
+                                <span id="storageValue" class="info-value mono text-accent">0 GB / 0 GB</span>
+                            </div>
+                            <!-- Depolama Halka/Pasta Çubuğu -->
+                            <div class="info-item" style="padding-top: 5px;">
+                                <div class="progress-bar" style="height: 6px;"><div id="storageBar" class="progress info" style="width: 0%;"></div></div>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">İşletim Sistemi</span>
+                                <span class="info-value mono">Android / Termux</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Uptime</span>
+                                <span id="uptimeValue" class="info-value mono text-accent">0h 0m</span>
+                            </div>
                         </div>
-                        <div class="info-item">
-                            <span class="info-label">Host</span>
-                            <span class="info-value mono">localhost:8080</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Uptime</span>
-                            <span id="uptimeValue" class="info-value mono text-accent">0h 0m</span>
-                        </div>
-                    </div>
-                </section>
+                    </section>
 
-                <!-- File Upload Panel -->
-                <section class="panel">
-                    <div class="panel-header">
-                        <h2 class="panel-title"><i data-lucide="upload-cloud"></i> Dosya Yükle (Sürükle - Bırak)</h2>
-                    </div>
-                    <div class="upload-zone" id="uploadZone">
-                        <input type="file" id="fileInput" style="display: none;">
-                        <i data-lucide="folder-up" class="upload-icon"></i>
-                        <p>Dosyayı buraya sürükleyin veya <strong>Tıklayın</strong></p>
-                        <div class="upload-progress" id="uploadProgress">
-                            <div class="upload-bar" id="uploadBar"></div>
+                    <!-- File Upload Panel -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="upload-cloud"></i> Dosya Yükle</h2>
                         </div>
-                    </div>
-                </section>
+                        <div class="upload-zone" id="uploadZone">
+                            <input type="file" id="fileInput" style="display: none;">
+                            <i data-lucide="folder-up" class="upload-icon"></i>
+                            <p>Dosyayı buraya sürükleyin veya <strong>Tıklayın</strong></p>
+                            <div class="upload-progress" id="uploadProgress">
+                                <div class="upload-bar" id="uploadBar"></div>
+                            </div>
+                        </div>
+                    </section>
 
-                <!-- File Manager Panel -->
-                <section class="panel">
-                    <div class="panel-header">
-                        <h2 class="panel-title"><i data-lucide="hard-drive"></i> Dosya Yöneticisi</h2>
-                    </div>
-                    <div class="file-list" id="fileList">
-                        <!-- Files will be loaded here via JS -->
-                        <div class="file-item empty-state">Dosya bulunamadı...</div>
-                    </div>
-                </section>
+                    <!-- File Manager Panel -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="hard-drive"></i> Dosya Yöneticisi</h2>
+                        </div>
+                        <div class="file-list" id="fileList">
+                            <div class="file-item empty-state">Dosya bulunamadı...</div>
+                        </div>
+                    </section>
 
-                <!-- YouTube Downloader Panel -->
-                <section class="panel">
-                    <div class="panel-header">
-                        <h2 class="panel-title"><i data-lucide="youtube"></i> YouTube İndirici</h2>
-                    </div>
-                    <div class="yt-form">
-                        <div class="yt-input-group">
-                            <label>YouTube URL</label>
-                            <input type="text" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+                    <!-- YouTube Downloader Panel -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="youtube"></i> YouTube İndirici</h2>
                         </div>
-                        <div class="yt-input-group">
-                            <label>API Key (savenow.to)</label>
-                            <input type="password" id="ytApiKey" placeholder="API Key'inizi girin..." autocomplete="off">
-                        </div>
-                        <div class="yt-input-group">
-                            <label>Format Seç</label>
-                            <div class="format-grid">
-                                <button class="fmt-btn active" data-fmt="360">360p</button>
-                                <button class="fmt-btn" data-fmt="480">480p</button>
-                                <button class="fmt-btn" data-fmt="720">720p HD</button>
-                                <button class="fmt-btn" data-fmt="1080">1080p FHD</button>
-                                <button class="fmt-btn" data-fmt="1440">1440p QHD</button>
-                                <button class="fmt-btn" data-fmt="2160">4K</button>
-                                <button class="fmt-btn mp3" data-fmt="mp3">MP3 🎵</button>
+                        <div class="yt-form">
+                            <div class="yt-input-group">
+                                <label>YouTube URL</label>
+                                <input type="text" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+                            </div>
+                            <div class="yt-input-group">
+                                <label>Format Seç</label>
+                                <div class="format-grid">
+                                    <button class="fmt-btn active" data-fmt="360">360p</button>
+                                    <button class="fmt-btn" data-fmt="480">480p</button>
+                                    <button class="fmt-btn" data-fmt="720">720p HD</button>
+                                    <button class="fmt-btn" data-fmt="1080">1080p FHD</button>
+                                    <button class="fmt-btn" data-fmt="1440">1440p QHD</button>
+                                    <button class="fmt-btn" data-fmt="2160">4K</button>
+                                    <button class="fmt-btn mp3" data-fmt="mp3">MP3 🎵</button>
+                                </div>
+                            </div>
+                            <button class="yt-download-btn" id="ytDownloadBtn" onclick="downloadYoutube()">
+                                <i data-lucide="download"></i>
+                                <span>Telefona İndir</span>
+                            </button>
+                            <div class="yt-progress" id="ytProgress">
+                                <div class="yt-bar" id="ytBar"></div>
                             </div>
                         </div>
-                        <button class="yt-download-btn" id="ytDownloadBtn" onclick="downloadYoutube()">
-                            <i data-lucide="download"></i>
-                            <span>Telefona İndir</span>
-                        </button>
-                        <div class="yt-progress" id="ytProgress">
-                            <div class="yt-bar" id="ytBar"></div>
-                        </div>
-                    </div>
-                </section>
+                    </section>
 
-                <section class="panel">
-                    <div class="panel-header">
-                        <h2 class="panel-title"><i data-lucide="zap"></i> Kontrol Merkezi</h2>
-                    </div>
-                    <div class="action-grid">
-                        <button class="btn-primary" onclick="triggerAction('start_bot')">
-                            <i data-lucide="bot"></i>
-                            <div class="btn-text">
-                                <strong>Botu Başlat</strong>
-                                <span>Ana servisi çalıştırır</span>
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="zap"></i> Kontrol Merkezi</h2>
+                        </div>
+                        <div class="action-grid">
+                            <button class="btn-primary" onclick="triggerAction('start_bot')">
+                                <i data-lucide="bot"></i>
+                                <div class="btn-text">
+                                    <strong>Botu Başlat</strong>
+                                    <span>Ana servisi çalıştırır</span>
+                                </div>
+                            </button>
+                            <button class="btn-secondary" onclick="triggerAction('restart_server')">
+                                <i data-lucide="refresh-cw"></i>
+                                <div class="btn-text">
+                                    <strong>Yeniden Başlat</strong>
+                                    <span>Tüm servisleri resetler</span>
+                                </div>
+                            </button>
+                            <button class="btn-secondary" onclick="toggleFlashlight()">
+                                <i data-lucide="lightbulb" id="flashlightIcon"></i>
+                                <div class="btn-text">
+                                    <strong>Feneri Aç/Kapa</strong>
+                                    <span id="flashlightStatus">Flaş kapalı</span>
+                                </div>
+                            </button>
+                            <button class="btn-secondary" onclick="triggerAction('clear_logs')">
+                                <i data-lucide="trash-2"></i>
+                                <div class="btn-text">
+                                    <strong>Logları Temizle</strong>
+                                    <span>Gereksiz dosyaları siler</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="brightness-control" style="margin-top: 15px; padding: 10px; background: rgba(255, 255, 255, 0.03); border-radius: 8px;">
+                            <label style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; color: var(--text-muted);">
+                                <span><i data-lucide="sun" class="inline-icon"></i> Ekran Parlaklığı</span>
+                                <span id="brightnessVal">128</span>
+                            </label>
+                            <input type="range" id="brightnessSlider" min="0" max="255" value="128" oninput="changeBrightness(this.value)" style="width: 100%; cursor: pointer;">
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab 2: Pip Yöneticisi -->
+                <div id="tab-pip" class="tab-content">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="package"></i> Python Paket Yöneticisi (Pip)</h2>
+                        </div>
+                        <div class="pip-search-box" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                            <input type="text" id="pipPackageInput" placeholder="Paket adı girin (örn: requests, beautifulsoup4)" style="flex: 1; padding: 10px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: var(--text-color);">
+                            <button class="btn-primary" onclick="managePip('install')" style="padding: 10px 20px;"><i data-lucide="download"></i> Kur</button>
+                        </div>
+                        <div class="file-list" id="pipPackageList" style="max-height: 400px; overflow-y: auto;">
+                            <div class="file-item empty-state">Yükleniyor...</div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab 3: Makrolar & Bildirimler -->
+                <div id="tab-macros" class="tab-content">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="bot"></i> Akıllı Makro Kuralları</h2>
+                        </div>
+                        <div class="info-list">
+                            <div class="info-item" style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px;">
+                                <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+                                    <strong>🔋 Düşük Pil Uyarısı</strong>
+                                    <label class="switch">
+                                        <input type="checkbox" id="macroLowBattery" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <p style="font-size: 12px; color: var(--text-muted);">Pil %15'in altına düştüğünde terminal loguna ve Telegram/Discord webhook'a uyarı gönderir.</p>
                             </div>
-                        </button>
-                        <button class="btn-secondary" onclick="triggerAction('restart_server')">
-                            <i data-lucide="refresh-cw"></i>
-                            <div class="btn-text">
-                                <strong>Yeniden Başlat</strong>
-                                <span>Tüm servisleri resetler</span>
+                            <div class="info-item" style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px;">
+                                <div style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+                                    <strong>🌡️ Aşırı Sıcaklık Koruması</strong>
+                                    <label class="switch">
+                                        <input type="checkbox" id="macroHighTemp" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <p style="font-size: 12px; color: var(--text-muted);">İşlemci sıcaklığı 45°C'yi geçtiğinde bildirim gönderir.</p>
                             </div>
+                        </div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="bell"></i> Gelen Bildirimler Köprüsü</h2>
+                        </div>
+                        <div class="file-list" id="notificationList" style="max-height: 250px; overflow-y: auto;">
+                            <div class="file-item empty-state">Bildirim gelmedi. (Termux:API Notification dinleyicisi aktif edilmeli)</div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab 4: Yedekleme & Araçlar -->
+                <div id="tab-backups" class="tab-content">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title"><i data-lucide="shield-alert"></i> Yedekleme Yöneticisi</h2>
+                        </div>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+                            `uploads` klasöründeki tüm dosyaları tek tıkla `.zip` formatında paketleyip indirebilirsiniz.
+                        </p>
+                        <button class="btn-primary" onclick="createBackup()" style="width: 100%; padding: 12px;">
+                            <i data-lucide="archive"></i> Yedek (Zip) Oluştur
                         </button>
-                        <button class="btn-secondary" onclick="triggerAction('clear_logs')">
-                            <i data-lucide="trash-2"></i>
-                            <div class="btn-text">
-                                <strong>Logları Temizle</strong>
-                                <span>Gereksiz dosyaları siler</span>
-                            </div>
-                        </button>
-                        <button class="btn-secondary" onclick="triggerAction('update_pkg')">
-                            <i data-lucide="download-cloud"></i>
-                            <div class="btn-text">
-                                <strong>Güncelle</strong>
-                                <span>pkg update && upgrade</span>
-                            </div>
-                        </button>
-                    </div>
-                </section>
+                        <div id="backupStatus" style="margin-top: 10px; font-size: 12px; text-align: center; color: var(--text-accent);"></div>
+                    </section>
+                </div>
             </div>
 
             <!-- Right Column: Terminal -->
@@ -198,6 +295,19 @@
                 </section>
             </div>
         </main>
+    </div>
+
+    <!-- Shyk Custom File Previewer Modal -->
+    <div id="previewModal" class="modal-overlay" onclick="closePreview()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="previewTitle">Dosya Önizleme</h3>
+                <button class="modal-close-btn" onclick="closePreview()"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body" id="previewBody">
+                <!-- Preview content here (Image, Text or Audio player) -->
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

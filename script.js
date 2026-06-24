@@ -1,6 +1,37 @@
 // Initialize Lucide Icons
 lucide.createIcons();
 
+// Tab Switching Logic
+function switchTab(tabId) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(el => {
+        el.classList.remove('active');
+    });
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    // Show selected tab content
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+
+    // Add active class to clicked button
+    const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
+        btn.getAttribute('onclick').includes(tabId)
+    );
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+
+    // Perform specific actions when tabs change
+    if (tabId === 'tab-pip') {
+        refreshPipList();
+    }
+}
+
 // Time Widget
 function updateTime() {
     const timeWidget = document.getElementById('timeWidget');
@@ -17,7 +48,7 @@ updateTime();
 // Real Metrics Polling
 async function fetchMetrics() {
     try {
-        const response = await fetch('/api/metrics');
+        const response = await fetch('/api/stats');
         const data = await response.json();
         
         // Update CPU
@@ -37,13 +68,63 @@ async function fetchMetrics() {
         
         // Update Uptime
         document.getElementById('uptimeValue').textContent = data.uptime;
+
+        // Update Battery
+        const batEl = document.getElementById('batteryValue');
+        if (batEl) {
+            batEl.textContent = `${data.battery_level}% (${data.battery_status})`;
+            if (data.battery_level < 20 && data.battery_status !== 'Charging') {
+                batEl.className = 'info-value mono text-danger';
+                // Trigger Macro Warning if checked
+                const macroBat = document.getElementById('macroLowBattery');
+                if (macroBat && macroBat.checked && !window.batteryWarned) {
+                    addTerminalLine(`[KRİTİK BİLDİRİM] Düşük pil seviyesi: %${data.battery_level}!`, true);
+                    window.batteryWarned = true;
+                }
+            } else {
+                batEl.className = 'info-value mono';
+                if (data.battery_level >= 20) window.batteryWarned = false;
+            }
+        }
+
+        // Update Temperature
+        const tempEl = document.getElementById('tempValue');
+        if (tempEl) {
+            tempEl.textContent = `${data.temperature.toFixed(1)} °C`;
+            if (data.temperature > 45) {
+                tempEl.className = 'info-value mono text-danger';
+                const macroTemp = document.getElementById('macroHighTemp');
+                if (macroTemp && macroTemp.checked && !window.tempWarned) {
+                    addTerminalLine(`[KRİTİK BİLDİRİM] Telefon sıcaklığı çok yüksek: ${data.temperature}°C!`, true);
+                    window.tempWarned = true;
+                }
+            } else if (data.temperature > 39) {
+                tempEl.className = 'info-value mono text-warning';
+                window.tempWarned = false;
+            } else {
+                tempEl.className = 'info-value mono text-accent';
+                window.tempWarned = false;
+            }
+        }
+
+        // Update Storage (Disk)
+        const storageEl = document.getElementById('storageValue');
+        const storageBar = document.getElementById('storageBar');
+        if (storageEl && storageBar) {
+            storageEl.textContent = `${data.storage_used} / ${data.storage_total}`;
+            storageBar.style.width = `${data.storage_percent}%`;
+            if (data.storage_percent > 85) storageBar.className = 'progress danger';
+            else if (data.storage_percent > 70) storageBar.className = 'progress warning';
+            else storageBar.className = 'progress';
+        }
         
     } catch (err) {
         console.error("Metrics fetch error:", err);
     }
 }
 
-setInterval(fetchMetrics, 2000);
+// Stats poll interval
+setInterval(fetchMetrics, 3000);
 fetchMetrics();
 
 
@@ -51,11 +132,11 @@ fetchMetrics();
 const terminalOutput = document.getElementById('terminalOutput');
 const terminalInput = document.getElementById('terminalInput');
 
-function addTerminalLine(text, isError = false) {
+function addTerminalLine(text, isSuccess = false) {
     if(!terminalOutput) return;
     
     const line = document.createElement('div');
-    line.className = 'term-line' + (isError ? ' error-msg' : '');
+    line.className = 'term-line' + (isSuccess ? ' success-msg' : '');
     
     line.textContent = text;
     
@@ -103,10 +184,10 @@ async function executeCommand(cmd) {
                 addTerminalLine(data.output);
             }
         } else {
-            addTerminalLine("Error: " + data.output, true);
+            addTerminalLine("Error: " + data.output, false);
         }
     } catch (err) {
-        addTerminalLine("Sistem Hatası: Arka plan sunucusuna bağlanılamadı. Lütfen 'python server.py' çalıştığından emin olun.", true);
+        addTerminalLine("Sistem Hatası: Arka plan sunucusuna bağlanılamadı. Lütfen 'python server.py' çalıştığından emin olun.", false);
         console.error(err);
     }
 }
@@ -133,6 +214,42 @@ if (terminalInput) {
             executeCommand(cmd);
         }
     });
+}
+
+// --- FLASHLIGHT & BRIGHTNESS CONTROLS ---
+let flashlightOn = false;
+async function toggleFlashlight() {
+    flashlightOn = !flashlightOn;
+    const btnText = document.getElementById('flashlightStatus');
+    const icon = document.getElementById('flashlightIcon');
+    
+    btnText.textContent = flashlightOn ? 'Flaş Açık 🔦' : 'Flaş Kapalı';
+    if(icon) {
+        icon.style.color = flashlightOn ? 'var(--warning)' : 'var(--text-secondary)';
+    }
+    
+    try {
+        await fetch('/api/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'flashlight', value: flashlightOn })
+        });
+    } catch(e) {
+        console.error("Flashlight toggle error:", e);
+    }
+}
+
+async function changeBrightness(val) {
+    document.getElementById('brightnessVal').textContent = val;
+    try {
+        await fetch('/api/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'brightness', value: parseInt(val) })
+        });
+    } catch(e) {
+        console.error("Brightness error:", e);
+    }
 }
 
 // --- FILE UPLOAD LOGIC ---
@@ -201,10 +318,10 @@ async function handleUpload(file) {
             refreshFileList(); // Refresh the file list after upload
         } else {
             uploadBar.style.width = '0%';
-            addTerminalLine(`[HATA] ${data.output}`, true);
+            addTerminalLine(`[HATA] ${data.output}`, false);
         }
     } catch (err) {
-        addTerminalLine(`[HATA] Yükleme başarısız: Sunucu bağlantısı koptu.`, true);
+        addTerminalLine(`[HATA] Yükleme başarısız: Sunucu bağlantısı koptu.`, false);
     }
     
     setTimeout(() => {
@@ -213,7 +330,7 @@ async function handleUpload(file) {
     }, 2000);
 }
 
-// --- FILE MANAGER LOGIC ---
+// --- FILE MANAGER LOGIC & PREVIEW ---
 const fileListElement = document.getElementById('fileList');
 
 async function refreshFileList() {
@@ -236,8 +353,10 @@ async function refreshFileList() {
             
             const fileInfo = document.createElement('div');
             fileInfo.className = 'file-info';
+            fileInfo.style.cursor = 'pointer';
+            fileInfo.onclick = () => previewFile(file.name);
             fileInfo.innerHTML = `
-                <i data-lucide="file"></i>
+                <i data-lucide="file-text"></i>
                 <div style="display:flex; flex-direction:column; gap:2px;">
                     <span class="file-name" title="${file.name}">${file.name}</span>
                     <span class="file-size">${file.size}</span>
@@ -257,7 +376,10 @@ async function refreshFileList() {
             deleteBtn.className = 'file-delete';
             deleteBtn.innerHTML = '<i data-lucide="trash-2"></i>';
             deleteBtn.title = 'Sil';
-            deleteBtn.onclick = () => deleteFile(file.name);
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteFile(file.name);
+            };
             
             actions.appendChild(downloadBtn);
             actions.appendChild(deleteBtn);
@@ -275,6 +397,61 @@ async function refreshFileList() {
 
 // Initial fetch of files
 refreshFileList();
+
+// --- PREVIEW FILE IN MODAL ---
+async function previewFile(fileName) {
+    const modal = document.getElementById('previewModal');
+    const title = document.getElementById('previewTitle');
+    const body = document.getElementById('previewBody');
+    
+    title.textContent = `Önizleme: ${fileName}`;
+    body.innerHTML = '<div class="empty-state">Yükleniyor...</div>';
+    modal.classList.add('active');
+    
+    try {
+        const response = await fetch(`/api/preview?name=${encodeURIComponent(fileName)}`);
+        const data = await response.json();
+        
+        if (data.status === 'error') {
+            body.innerHTML = `<div class="term-line error-msg">${data.output}</div>`;
+            return;
+        }
+        
+        if (data.type === 'text') {
+            body.innerHTML = `<pre class="text-preview">${escapeHtml(data.content)}</pre>`;
+        } else if (data.type === 'image') {
+            body.innerHTML = `<img class="img-preview" src="${data.url}" alt="${fileName}">`;
+        } else if (data.type === 'audio') {
+            body.innerHTML = `
+                <div style="text-align:center;">
+                    <i data-lucide="music-4" style="width:48px; height:48px; color:var(--accent); margin-bottom:10px;"></i>
+                    <audio class="audio-preview" controls src="${data.url}"></audio>
+                </div>
+            `;
+            lucide.createIcons();
+        } else {
+            body.innerHTML = `<div class="empty-state">${data.content}</div>`;
+        }
+    } catch(err) {
+        body.innerHTML = `<div class="term-line error-msg">Önizleme yüklenemedi.</div>`;
+    }
+}
+
+function closePreview() {
+    document.getElementById('previewModal').classList.remove('active');
+    // Stop any playing audio
+    const audio = document.querySelector('.audio-preview');
+    if (audio) audio.pause();
+}
+
+function escapeHtml(text) {
+    return text
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
 
 // --- DELETE FILE ---
 async function deleteFile(fileName) {
@@ -299,6 +476,103 @@ async function deleteFile(fileName) {
     }
 }
 
+// --- PIP PACKAGES LOGIC ---
+const pipListEl = document.getElementById('pipPackageList');
+
+async function refreshPipList() {
+    if (!pipListEl) return;
+    pipListEl.innerHTML = '<div class="file-item empty-state">Python paketleri yükleniyor...</div>';
+    
+    try {
+        const response = await fetch('/api/pip/list');
+        const data = await response.json();
+        
+        if (data.status === 'error') {
+            pipListEl.innerHTML = `<div class="file-item empty-state text-danger">Hata: ${data.output}</div>`;
+            return;
+        }
+        
+        pipListEl.innerHTML = '';
+        if (data.packages.length === 0) {
+            pipListEl.innerHTML = '<div class="file-item empty-state">Kurulu paket bulunamadı.</div>';
+            return;
+        }
+        
+        data.packages.forEach(pkg => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `
+                <div class="file-info">
+                    <i data-lucide="package-check" style="color:var(--success)"></i>
+                    <div style="display:flex; flex-direction:column;">
+                        <span class="file-name" style="font-weight:600;">${pkg.name}</span>
+                        <span class="file-size" style="font-size:0.75rem;">Sürüm: ${pkg.version}</span>
+                    </div>
+                </div>
+                <button class="file-delete" onclick="managePip('uninstall', '${pkg.name}')" title="Kaldır"><i data-lucide="trash-2"></i></button>
+            `;
+            pipListEl.appendChild(item);
+        });
+        lucide.createIcons();
+    } catch(e) {
+        pipListEl.innerHTML = '<div class="file-item empty-state text-danger">Sunucu bağlantı hatası.</div>';
+    }
+}
+
+async function managePip(action, packageName = '') {
+    const input = document.getElementById('pipPackageInput');
+    const pkg = packageName || input.value.trim();
+    
+    if (!pkg) {
+        alert("Lütfen paket adı girin!");
+        return;
+    }
+    
+    if (action === 'uninstall' && !confirm(`'${pkg}' paketini kaldırmak istediğinizden emin misiniz?`)) return;
+    
+    addTerminalLine(`[PIP] Paket ${action === 'install' ? 'kuruluyor' : 'kaldırılıyor'}: ${pkg}...`);
+    if (input && !packageName) input.value = '';
+    
+    try {
+        const response = await fetch('/api/pip/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, package: pkg })
+        });
+        const data = await response.json();
+        if (data.status === 'success') {
+            addTerminalLine(`[PIP BAŞARILI] \n${data.output}`, true);
+            refreshPipList();
+        } else {
+            addTerminalLine(`[PIP HATA] ${data.output}`, false);
+        }
+    } catch(e) {
+        addTerminalLine(`[PIP HATA] Sunucuyla iletişim kurulamadı.`, false);
+    }
+}
+
+// --- BACKUP LOGIC ---
+async function createBackup() {
+    const status = document.getElementById('backupStatus');
+    status.textContent = 'Yedek arşivi hazırlanıyor, lütfen bekleyin...';
+    
+    try {
+        const response = await fetch('/api/backup', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            status.textContent = data.output;
+            addTerminalLine(`[YEDEK OK] Yedekleme paketi oluşturuldu: ${data.file}`, true);
+            refreshFileList(); // Refresh to show backup zip file
+        } else {
+            status.textContent = `Hata: ${data.output}`;
+            addTerminalLine(`[YEDEK HATA] ${data.output}`, false);
+        }
+    } catch(e) {
+        status.textContent = 'Bağlantı hatası!';
+    }
+}
+
 // --- YOUTUBE DOWNLOADER ---
 let selectedFormat = '360';
 
@@ -312,16 +586,11 @@ document.querySelectorAll('.fmt-btn').forEach(btn => {
 
 async function downloadYoutube() {
     const url = document.getElementById('ytUrl').value.trim();
-    const apiKey = document.getElementById('ytApiKey').value.trim();
     const btn = document.getElementById('ytDownloadBtn');
     const progress = document.getElementById('ytProgress');
     
     if (!url) {
         addTerminalLine('[HATA] Lütfen bir YouTube URL\'si girin!', false);
-        return;
-    }
-    if (!apiKey) {
-        addTerminalLine('[HATA] Lütfen API Key\'inizi girin!', false);
         return;
     }
     
@@ -333,7 +602,7 @@ async function downloadYoutube() {
         const response = await fetch('/api/youtube', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, format: selectedFormat, apikey: apiKey })
+            body: JSON.stringify({ url, format: selectedFormat })
         });
         const data = await response.json();
         
@@ -351,3 +620,4 @@ async function downloadYoutube() {
         progress.style.display = 'none';
     }
 }
+

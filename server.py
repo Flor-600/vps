@@ -10,7 +10,7 @@ PORT = 8080
 
 class TermuxHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/api/metrics':
+        if self.path == '/api/metrics' or self.path == '/api/stats':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -19,7 +19,14 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 'cpu_usage': 0,
                 'ram_total': 0,
                 'ram_used': 0,
-                'uptime': '0h 0m'
+                'uptime': '0h 0m',
+                'battery_level': 100,
+                'battery_status': 'Discharging',
+                'temperature': 35.0,
+                'storage_total': '0 GB',
+                'storage_used': '0 GB',
+                'storage_free': '0 GB',
+                'storage_percent': 0
             }
             
             try:
@@ -35,7 +42,6 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 if os.path.exists('/proc/loadavg'):
                     with open('/proc/loadavg', 'r') as f:
                         load = float(f.readline().split()[0])
-                        # Rough conversion of load to percentage (assuming 8 cores roughly)
                         metrics['cpu_usage'] = min(int((load / 8.0) * 100), 100)
                 
                 # Get RAM
@@ -52,6 +58,54 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                     if mem_total > 0:
                         metrics['ram_total'] = round(mem_total / 1024 / 1024, 1) # GB
                         metrics['ram_used'] = round((mem_total - mem_available) / 1024 / 1024, 1) # GB
+
+                # Get Storage (Disk) Info
+                try:
+                    import shutil
+                    total, used, free = shutil.disk_usage(os.getcwd())
+                    metrics['storage_total'] = f"{total / (2**30):.1f} GB"
+                    metrics['storage_used'] = f"{used / (2**30):.1f} GB"
+                    metrics['storage_free'] = f"{free / (2**30):.1f} GB"
+                    metrics['storage_percent'] = int((used / total) * 100)
+                except:
+                    pass
+
+                # Get Battery Status (Termux API fallback to system files)
+                battery_set = False
+                try:
+                    # Try using command line termux-battery-status if available
+                    proc = subprocess.Popen(['termux-battery-status'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    out, _ = proc.communicate(timeout=2)
+                    if proc.returncode == 0:
+                        bat_data = json.loads(out)
+                        metrics['battery_level'] = bat_data.get('percentage', 100)
+                        metrics['battery_status'] = bat_data.get('status', 'Discharging')
+                        metrics['temperature'] = bat_data.get('temperature', 35.0)
+                        battery_set = True
+                except:
+                    pass
+
+                if not battery_set:
+                    # Fallback to sys files (e.g. android battery sys paths)
+                    try:
+                        # Common paths for battery capacity & temp
+                        cap_path = '/sys/class/power_supply/battery/capacity'
+                        temp_path = '/sys/class/power_supply/battery/temp'
+                        status_path = '/sys/class/power_supply/battery/status'
+                        
+                        if os.path.exists(cap_path):
+                            with open(cap_path, 'r') as f:
+                                metrics['battery_level'] = int(f.read().strip())
+                        if os.path.exists(temp_path):
+                            with open(temp_path, 'r') as f:
+                                # Temp is often in tenths of degree (e.g. 350 for 35.0 C)
+                                raw_temp = float(f.read().strip())
+                                metrics['temperature'] = raw_temp / 10.0 if raw_temp > 100 else raw_temp
+                        if os.path.exists(status_path):
+                            with open(status_path, 'r') as f:
+                                metrics['battery_status'] = f.read().strip()
+                    except:
+                        pass
             except Exception as e:
                 pass
                 
@@ -71,7 +125,6 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                     file_path = os.path.join(upload_dir, f)
                     if os.path.isfile(file_path):
                         size = os.path.getsize(file_path)
-                        # Convert to readable format
                         if size < 1024:
                             size_str = f"{size} B"
                         elif size < 1024 * 1024:
@@ -86,6 +139,75 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                         })
                         
             self.wfile.write(json.dumps({'files': files_list}).encode('utf-8'))
+            return
+
+        elif self.path.startswith('/api/preview'):
+            # Parse query params
+            parsed_url = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed_url.query)
+            file_name = params.get('name', [''])[0]
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            try:
+                if not file_name or '..' in file_name or '/' in file_name or '\\' in file_name:
+                    raise Exception('Geçersiz dosya adı!')
+                
+                upload_dir = os.path.join(os.getcwd(), 'uploads')
+                file_path = os.path.join(upload_dir, file_name)
+                
+                if not os.path.exists(file_path):
+                    raise Exception('Dosya bulunamadı!')
+                
+                # Check extension to decide response format
+                ext = file_name.split('.')[-1].lower()
+                text_exts = ['txt', 'log', 'py', 'js', 'html', 'css', 'json', 'sh', 'md', 'xml']
+                img_exts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']
+                audio_exts = ['mp3', 'wav', 'ogg', 'm4a']
+                
+                if ext in text_exts:
+                    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                        content = f.read(50000) # Max 50KB for safety
+                        response = {'type': 'text', 'content': content}
+                elif ext in img_exts:
+                    response = {'type': 'image', 'url': f'/uploads/{file_name}'}
+                elif ext in audio_exts:
+                    response = {'type': 'audio', 'url': f'/uploads/{file_name}'}
+                else:
+                    response = {'type': 'binary', 'content': 'Önizleme desteklenmiyor. Lütfen dosyayı indirin.'}
+            except Exception as e:
+                response = {'status': 'error', 'output': str(e)}
+                
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            return
+
+        elif self.path == '/api/pip/list':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            try:
+                proc = subprocess.Popen(['pip', 'list', '--format=json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                out, _ = proc.communicate(timeout=10)
+                if proc.returncode == 0:
+                    packages = json.loads(out)
+                else:
+                    # Fallback to standard pip list parser if --format=json fails
+                    proc2 = subprocess.Popen(['pip', 'list'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    out2, _ = proc2.communicate(timeout=10)
+                    packages = []
+                    lines = out2.split('\n')[2:] # skip headers
+                    for line in lines:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            packages.append({'name': parts[0], 'version': parts[1]})
+                response = {'status': 'success', 'packages': packages}
+            except Exception as e:
+                response = {'status': 'error', 'output': str(e)}
+                
+            self.wfile.write(json.dumps(response).encode('utf-8'))
             return
             
         return super().do_GET()
@@ -106,7 +228,6 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 content_length = int(self.headers['Content-Length'])
                 # Read the binary data and save directly
                 with open(file_path, 'wb') as f:
-                    # Read in chunks to handle large files without eating all RAM
                     chunk_size = 8192
                     bytes_read = 0
                     while bytes_read < content_length:
@@ -137,8 +258,6 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 command = data.get('command', '')
                 
-                # Execute command
-                # Use shell=True to allow complex bash commands (pipes, etc)
                 process = subprocess.Popen(
                     command,
                     shell=True,
@@ -164,6 +283,108 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 response = {'status': 'error', 'output': str(e)}
                 self.wfile.write(json.dumps(response).encode('utf-8'))
+
+        elif self.path == '/api/control':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                action = data.get('action', '')
+                val = data.get('value', '')
+                
+                output = "Başarılı"
+                
+                if action == 'flashlight':
+                    status = 'on' if val else 'off'
+                    try:
+                        subprocess.run(['termux-torch', status], check=True, timeout=2)
+                    except:
+                        output = f"Fener {status} komutu simüle edildi (Termux:API kurulu değil)"
+                elif action == 'brightness':
+                    try:
+                        subprocess.run(['termux-brightness', str(val)], check=True, timeout=2)
+                    except:
+                        output = f"Parlaklık {val} komutu simüle edildi (Termux:API kurulu değil)"
+                        
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'success', 'output': output}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'error', 'output': str(e)}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+
+        elif self.path == '/api/pip/manage':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                action = data.get('action', '')
+                package = data.get('package', '')
+                
+                if not package:
+                    raise Exception('Paket adı eksik!')
+                
+                if action == 'install':
+                    cmd = ['pip', 'install', package]
+                elif action == 'uninstall':
+                    cmd = ['pip', 'uninstall', '-y', package]
+                else:
+                    raise Exception('Geçersiz işlem!')
+                    
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                output, _ = proc.communicate(timeout=60)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'success', 'output': output}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'error', 'output': str(e)}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+
+        elif self.path == '/api/backup':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            try:
+                import zipfile
+                upload_dir = os.path.join(os.getcwd(), 'uploads')
+                backup_name = 'vps_uploads_backup.zip'
+                backup_path = os.path.join(os.getcwd(), backup_name)
+                
+                if not os.path.exists(upload_dir) or len(os.listdir(upload_dir)) == 0:
+                    raise Exception('Yedeklenecek dosya yok (uploads klasörü boş)!')
+                
+                with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for root, dirs, files in os.walk(upload_dir):
+                        for file in files:
+                            zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(upload_dir, '..')))
+                
+                # Move to uploads directory so it can be downloaded via file manager
+                dest_path = os.path.join(upload_dir, backup_name)
+                if os.path.exists(dest_path):
+                    os.remove(dest_path)
+                os.rename(backup_path, dest_path)
+                
+                response = {'status': 'success', 'output': f'Yedekleme oluşturuldu ve indirilebilir: {backup_name}', 'file': backup_name}
+            except Exception as e:
+                response = {'status': 'error', 'output': str(e)}
+                
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            return
+
         elif self.path == '/api/delete':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
@@ -205,10 +426,10 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 yt_url = data.get('url', '')
                 fmt = data.get('format', '720')
-                api_key = data.get('apikey', '')
+                api_key = '921c198761efff19eee84e66c9a493ef7f3b4a7'  # sabit API key
 
-                if not yt_url or not api_key:
-                    raise Exception('URL veya API Key eksik!')
+                if not yt_url:
+                    raise Exception('YouTube URL eksik!')
 
                 # Step 1: Make initial request to savenow.to
                 encoded_url = urllib.parse.quote(yt_url, safe='')
