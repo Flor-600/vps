@@ -134,3 +134,80 @@ if (terminalInput) {
         }
     });
 }
+
+// --- FILE UPLOAD LOGIC ---
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const uploadProgress = document.getElementById('uploadProgress');
+const uploadBar = document.getElementById('uploadBar');
+
+if (uploadZone && fileInput) {
+    // Click to open file dialog
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    // Drag and Drop Events
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, () => {
+            uploadZone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, () => {
+            uploadZone.classList.remove('dragover');
+        }, false);
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) handleUpload(files[0]);
+    }, false);
+
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) handleUpload(this.files[0]);
+    });
+}
+
+async function handleUpload(file) {
+    if (!file) return;
+    
+    uploadProgress.style.display = 'block';
+    uploadBar.style.width = '0%';
+    addTerminalLine(`[UPLOAD] '${file.name}' (${(file.size / 1024 / 1024).toFixed(2)} MB) yükleniyor...`);
+    
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+                'X-File-Name': encodeURIComponent(file.name)
+            },
+            body: file
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            uploadBar.style.width = '100%';
+            addTerminalLine(`[OK] ${data.output}`, true);
+        } else {
+            uploadBar.style.width = '0%';
+            addTerminalLine(`[HATA] ${data.output}`, true);
+        }
+    } catch (err) {
+        addTerminalLine(`[HATA] Yükleme başarısız: Sunucu bağlantısı koptu.`, true);
+    }
+    
+    setTimeout(() => {
+        uploadProgress.style.display = 'none';
+        uploadBar.style.width = '0%';
+    }, 2000);
+}

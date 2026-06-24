@@ -59,7 +59,45 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path == '/api/command':
+        if self.path == '/api/upload':
+            # Get filename from headers
+            file_name = self.headers.get('X-File-Name', 'uploaded_file')
+            
+            # Ensure uploads directory exists
+            upload_dir = os.path.join(os.getcwd(), 'uploads')
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir)
+                
+            file_path = os.path.join(upload_dir, file_name)
+            
+            try:
+                content_length = int(self.headers['Content-Length'])
+                # Read the binary data and save directly
+                with open(file_path, 'wb') as f:
+                    # Read in chunks to handle large files without eating all RAM
+                    chunk_size = 8192
+                    bytes_read = 0
+                    while bytes_read < content_length:
+                        chunk = self.rfile.read(min(chunk_size, content_length - bytes_read))
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        bytes_read += len(chunk)
+                        
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'success', 'output': f"'{file_name}' başarıyla yüklendi!"}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'error', 'output': str(e)}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+                
+        elif self.path == '/api/command':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             
