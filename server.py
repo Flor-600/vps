@@ -201,6 +201,7 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
 
             try:
+                import time
                 data = json.loads(post_data.decode('utf-8'))
                 yt_url = data.get('url', '')
                 fmt = data.get('format', '720')
@@ -209,7 +210,7 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 if not yt_url or not api_key:
                     raise Exception('URL veya API Key eksik!')
 
-                # Build savenow.to API URL
+                # Step 1: Make initial request to savenow.to
                 encoded_url = urllib.parse.quote(yt_url, safe='')
                 api_url = (f"https://p.savenow.to/ajax/download.php"
                            f"?url={encoded_url}&format={fmt}&apikey={api_key}"
@@ -219,30 +220,54 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     api_response = json.loads(resp.read().decode('utf-8'))
 
-                # The API returns a download link
-                download_link = api_response.get('url') or api_response.get('link') or api_response.get('download_url')
-                
-                if download_link:
-                    # Download the file to uploads folder
-                    upload_dir = os.path.join(os.getcwd(), 'uploads')
-                    if not os.path.exists(upload_dir):
-                        os.makedirs(upload_dir)
+                if not api_response.get('success'):
+                    raise Exception(f"API hatası: {api_response}")
 
-                    # Get a clean filename
-                    title = api_response.get('title', 'video').replace('/', '_').replace('\\', '_')
-                    ext = 'mp3' if fmt == 'mp3' else 'mp4'
-                    safe_title = "".join(c for c in title if c.isalnum() or c in ' ._-')[:80]
-                    file_name = f"{safe_title}.{ext}"
-                    out_path = os.path.join(upload_dir, file_name)
+                # Step 2: Poll progress_url until download URL is ready
+                download_link = api_response.get('url')
+                progress_url = api_response.get('progress_url')
+                title = api_response.get('title', 'video')
 
-                    urllib.request.urlretrieve(download_link, out_path)
+                if not download_link and progress_url:
+                    # Poll up to 60 times (max ~120 seconds)
+                    for attempt in range(60):
+                        time.sleep(2)
+                        preq = urllib.request.Request(progress_url)
+                        with urllib.request.urlopen(preq, timeout=15) as presp:
+                            progress_data = json.loads(presp.read().decode('utf-8'))
 
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
-                    response = {'status': 'success', 'output': f"'{file_name}' başarıyla indirildi ve uploads klasörüne kaydedildi!", 'title': title}
-                else:
-                    raise Exception(f"API yanıtı geçersiz: {json.dumps(api_response)[:200]}")
+                        download_link = progress_data.get('url')
+                        title = progress_data.get('title', title)
+
+                        if download_link:
+                            break  # URL is ready!
+
+                        status_text = progress_data.get('text', '')
+                        print(f"[YT] Polling ({attempt+1}/60): {status_text}")
+
+                if not download_link:
+                    raise Exception('Zaman aşımı: Video 120 saniyede hazır olmadı. Tekrar deneyin.')
+
+                # Step 3: Download the file to uploads folder
+                upload_dir = os.path.join(os.getcwd(), 'uploads')
+                if not os.path.exists(upload_dir):
+                    os.makedirs(upload_dir)
+
+                title = title.replace('/', '_').replace('\\', '_')
+                ext = 'mp3' if fmt == 'mp3' else 'mp4'
+                safe_title = "".join(c for c in title if c.isalnum() or c in ' ._-')[:80].strip()
+                if not safe_title:
+                    safe_title = 'video'
+                file_name = f"{safe_title}.{ext}"
+                out_path = os.path.join(upload_dir, file_name)
+
+                urllib.request.urlretrieve(download_link, out_path)
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'success', 'output': f"'{file_name}' başarıyla indirildi!", 'title': title}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
 
             except Exception as e:
                 self.send_response(500)
@@ -258,6 +283,9 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     # Ensure working directory is the same as the script
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    
+    # allow_reuse_address fixes "errno 98: Address already in use" on restart
+    socketserver.TCPServer.allow_reuse_address = True
     
     with socketserver.TCPServer(("", PORT), TermuxHandler) as httpd:
         print(f"Termux VPS Console is running on Phone WebPanel : http://localhost:{PORT}")
