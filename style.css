@@ -408,6 +408,84 @@ button svg {
     transition: width 0.2s ease;
 }
 
+/* File Manager */
+.file-list {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 0.4rem;
+    transition: background 0.2s ease;
+}
+
+.file-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.file-item.empty-state {
+    color: var(--text-muted);
+    justify-content: center;
+    font-style: italic;
+    padding: 2rem;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    overflow: hidden;
+}
+
+.file-info svg {
+    color: var(--text-secondary);
+    width: 18px; height: 18px;
+    flex-shrink: 0;
+}
+
+.file-name {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.file-size {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.file-download {
+    color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 0.25rem;
+    padding: 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.file-download:hover {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.file-download svg {
+    width: 16px; height: 16px;
+}
+
 /* Terminal Panel */
 .terminal-panel {
     display: flex;

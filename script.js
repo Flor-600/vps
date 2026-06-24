@@ -198,6 +198,7 @@ async function handleUpload(file) {
         if (data.status === 'success') {
             uploadBar.style.width = '100%';
             addTerminalLine(`[OK] ${data.output}`, true);
+            refreshFileList(); // Refresh the file list after upload
         } else {
             uploadBar.style.width = '0%';
             addTerminalLine(`[HATA] ${data.output}`, true);
@@ -211,3 +212,55 @@ async function handleUpload(file) {
         uploadBar.style.width = '0%';
     }, 2000);
 }
+
+// --- FILE MANAGER LOGIC ---
+const fileListElement = document.getElementById('fileList');
+
+async function refreshFileList() {
+    if (!fileListElement) return;
+    
+    try {
+        const response = await fetch('/api/files');
+        const data = await response.json();
+        
+        fileListElement.innerHTML = '';
+        
+        if (!data.files || data.files.length === 0) {
+            fileListElement.innerHTML = '<div class="file-item empty-state">Dosya bulunamadı...</div>';
+            return;
+        }
+        
+        data.files.forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-info';
+            fileInfo.innerHTML = `
+                <i data-lucide="file"></i>
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                    <span class="file-size">${file.size}</span>
+                </div>
+            `;
+            
+            const downloadBtn = document.createElement('a');
+            downloadBtn.className = 'file-download';
+            downloadBtn.href = file.url;
+            downloadBtn.download = file.name;
+            downloadBtn.innerHTML = '<i data-lucide="download"></i>';
+            
+            item.appendChild(fileInfo);
+            item.appendChild(downloadBtn);
+            fileListElement.appendChild(item);
+        });
+        
+        lucide.createIcons();
+    } catch (err) {
+        console.error("File list refresh error:", err);
+        fileListElement.innerHTML = '<div class="file-item empty-state" style="color:var(--danger)">Bağlantı hatası</div>';
+    }
+}
+
+// Initial fetch of files
+refreshFileList();

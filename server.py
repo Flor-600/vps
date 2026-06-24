@@ -56,6 +56,36 @@ class TermuxHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(metrics).encode('utf-8'))
             return
             
+        elif self.path == '/api/files':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            upload_dir = os.path.join(os.getcwd(), 'uploads')
+            files_list = []
+            
+            if os.path.exists(upload_dir):
+                for f in os.listdir(upload_dir):
+                    file_path = os.path.join(upload_dir, f)
+                    if os.path.isfile(file_path):
+                        size = os.path.getsize(file_path)
+                        # Convert to readable format
+                        if size < 1024:
+                            size_str = f"{size} B"
+                        elif size < 1024 * 1024:
+                            size_str = f"{size/1024:.1f} KB"
+                        else:
+                            size_str = f"{size/1024/1024:.2f} MB"
+                            
+                        files_list.append({
+                            'name': f,
+                            'size': size_str,
+                            'url': f"/uploads/{f}"
+                        })
+                        
+            self.wfile.write(json.dumps({'files': files_list}).encode('utf-8'))
+            return
+            
         return super().do_GET()
 
     def do_POST(self):
